@@ -124,8 +124,8 @@ class Shuttermanager extends utils.Adapter {
 			this.log.warn("Can't read current temperature from sensor with id " + this.config.tempSensorId);
 			return;
 		}
-		this.log.info(this.config.sunProtectionIfTempIsHigherThan + "," + (tempSensor.val + Number(1)))
-		if (this.config.sunProtectionIfTempIsHigherThan > (tempSensor.val + Number(1))) {
+		this.log.info(this.config.sunProtectionIfTempIsHigherThan + "," + (tempSensor.val as number + Number(1)))
+		if (this.config.sunProtectionIfTempIsHigherThan > (tempSensor.val as number + Number(1))) {
 			this.resetAllSunProtections();
 			return;
 		}
