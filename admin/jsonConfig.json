@@ -1,0 +1,65 @@
+{
+    "i18n": true,
+    "type": "tabs",
+    "items": {
+        "main": {
+            "type": "panel",
+            "label": "MainSettings",
+            "items": {
+                "sunProtectionIfTempIsHigherThan": {
+                    "type": "number",
+                    "label": "SunProtectionIfTempIsHigherThan"
+                },
+                "tempSensorId": {
+                    "type": "objectId",
+                    "label": "TempSensorId"
+                },
+                "minimumAltitude": {
+                    "type": "number",
+                    "label": "MinimumAltitude"
+                }
+            }
+        },
+        "sunProtections": {
+            "type": "panel",
+            "label": "SunProtection",
+            "items": {
+                "sunProtectionShutters": {
+                    "type": "table",
+                    "sm": 10,
+                    "md": 10,
+                    "lg": 10,
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "attr": "shutterId",
+                            "title": "ShutterId",
+                            "filter": true,
+                            "sort": true,
+                            "width": "30%",
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "attr": "sunProtectionFrom",
+                            "title": "SunProtectionFrom",
+                            "width": "25%"
+                        },
+                        {
+                            "type": "number",
+                            "attr": "sunProtectionUntil",
+                            "title": "SunProtectionUntil",
+                            "width": "25%"
+                        },
+                        {
+                            "type": "number",
+                            "attr": "sunProtectionPosition",
+                            "title": "SunProtectionPosition",
+                            "width": "20%"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

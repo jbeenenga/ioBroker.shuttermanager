@@ -5,11 +5,17 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from "@iobroker/adapter-core";
+import { isNumeric } from "rxjs/util/isNumeric";
+import { getPosition } from "suncalc";
 
 // Load your modules here, e.g.:
 // import * as fs from "fs";
 
 class Shuttermanager extends utils.Adapter {
+
+	private latitude = 0;
+	private longitude = 0;
+
 
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
@@ -17,9 +23,6 @@ class Shuttermanager extends utils.Adapter {
 			name: "shuttermanager",
 		});
 		this.on("ready", this.onReady.bind(this));
-		this.on("stateChange", this.onStateChange.bind(this));
-		// this.on("objectChange", this.onObjectChange.bind(this));
-		// this.on("message", this.onMessage.bind(this));
 		this.on("unload", this.onUnload.bind(this));
 	}
 
@@ -28,11 +31,19 @@ class Shuttermanager extends utils.Adapter {
 	 */
 	private async onReady(): Promise<void> {
 		// Initialize your adapter here
+		this.getForeignObject("system.config", (err, state) => {
+			if (!err) {
+				this.longitude = state?.common.longitude;
+				this.latitude = state?.common.latitude;
+			}
+		});
+
+		this.initEnums();
+
+		this.setInterval(this.check.bind(this), 5000);
 
 		// The adapters config (in the instance object everything under the attribute "native") is accessible via
 		// this.config:
-		this.log.info("config option1: " + this.config.option1);
-		this.log.info("config option2: " + this.config.option2);
 
 		/*
 		For every state in the system there has to be also an object of type state
@@ -80,6 +91,90 @@ class Shuttermanager extends utils.Adapter {
 		this.log.info("check group user admin group admin: " + result);
 	}
 
+	private initEnums(): void {
+		this.setObjectNotExistsAsync("enum.functions.schutters", {
+			common: {
+				name: {
+					"en": "Shutters",
+					"de": "Rollläden",
+					"ru": "затворы",
+					"pt": "Portas de madeira",
+					"nl": "Kappen",
+					"fr": "Volets",
+					"it": "Persiane",
+					"es": "Persianas",
+					"pl": "Szablon",
+					"zh-cn": "穿梭"
+				}
+			}
+		} as ioBroker.EnumObject)
+	}
+
+	private async check(): Promise<void> {
+		this.checkSunProtection();
+	}
+
+	private async checkSunProtection(): Promise<void> {
+		if (this.config.tempSensorId == undefined) {
+			this.log.warn("Temperature sensor id is not set!");
+			return;
+		}
+		const tempSensor = await this.getForeignStateAsync(this.config.tempSensorId);
+		if (tempSensor == undefined || tempSensor.val == undefined || !isNumeric(tempSensor.val)) {
+			this.log.warn("Can't read current temperature from sensor with id " + this.config.tempSensorId);
+			return;
+		}
+		this.log.info(this.config.sunProtectionIfTempIsHigherThan + "," + (tempSensor.val + Number(1)))
+		if (this.config.sunProtectionIfTempIsHigherThan > (tempSensor.val + Number(1))) {
+			this.resetAllSunProtections();
+			return;
+		}
+		if (this.config.sunProtectionIfTempIsHigherThan > tempSensor.val) {
+			return;
+		}
+		const sunPositionResult = getPosition(new Date(), this.latitude, this.longitude);
+		const altitude = sunPositionResult.altitude * 180 / Math.PI
+		const azimuth = 180 + sunPositionResult.azimuth * 180 / Math.PI
+
+		this.log.info(altitude + "," + azimuth);
+
+		if (altitude < this.config.minimumAltitude) {
+			this.resetAllSunProtections();
+			return;
+		}
+		let i = 0;
+		while (i < this.config.sunProtectionShutters.length) {
+			const shutter = await this.getForeignStateAsync(this.config.sunProtectionShutters[i].shutterId);
+			this.log.info(this.config.sunProtectionShutters[i].sunProtectionUntil +"("+JSON.stringify(shutter)+")"+ ","+azimuth);
+			if (this.config.sunProtectionShutters[i].sunProtectionFrom < azimuth && this.config.sunProtectionShutters[i].sunProtectionUntil > azimuth) {
+				if (shutter?.val == 0) {
+					this.setForeignStateAsync(this.config.sunProtectionShutters[i].shutterId, this.config.sunProtectionShutters[i].sunProtectionPosition);
+				}
+			} else {
+				if (shutter?.val == this.config.sunProtectionShutters[i].sunProtectionPosition) {
+					this.setForeignStateAsync(this.config.sunProtectionShutters[i].shutterId, 0);
+				}
+			}
+			i++;
+		}
+
+
+
+	}
+	private async resetAllSunProtections(): Promise<void> {
+		let i = 0;
+		while (i < this.config.sunProtectionShutters.length) {
+			const shutter = await this.getForeignStateAsync(this.config.sunProtectionShutters[i].shutterId);
+			if (shutter?.val == this.config.sunProtectionShutters[i].sunProtectionPosition) {
+				this.setForeignStateAsync(this.config.sunProtectionShutters[i].shutterId, 0);
+			}
+			i++;
+		}
+	}
+
+
+
+
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
 	 */
@@ -96,52 +191,6 @@ class Shuttermanager extends utils.Adapter {
 			callback();
 		}
 	}
-
-	// If you need to react to object changes, uncomment the following block and the corresponding line in the constructor.
-	// You also need to subscribe to the objects with `this.subscribeObjects`, similar to `this.subscribeStates`.
-	// /**
-	//  * Is called if a subscribed object changes
-	//  */
-	// private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
-	// 	if (obj) {
-	// 		// The object was changed
-	// 		this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-	// 	} else {
-	// 		// The object was deleted
-	// 		this.log.info(`object ${id} deleted`);
-	// 	}
-	// }
-
-	/**
-	 * Is called if a subscribed state changes
-	 */
-	private onStateChange(id: string, state: ioBroker.State | null | undefined): void {
-		if (state) {
-			// The state was changed
-			this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-		} else {
-			// The state was deleted
-			this.log.info(`state ${id} deleted`);
-		}
-	}
-
-	// If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
-	// /**
-	//  * Some message was sent to this instance over message box. Used by email, pushover, text2speech, ...
-	//  * Using this method requires "common.messagebox" property to be set to true in io-package.json
-	//  */
-	// private onMessage(obj: ioBroker.Message): void {
-	// 	if (typeof obj === "object" && obj.message) {
-	// 		if (obj.command === "send") {
-	// 			// e.g. send email or pushover or whatever
-	// 			this.log.info("send command");
-
-	// 			// Send response in callback if required
-	// 			if (obj.callback) this.sendTo(obj.from, obj.command, "Message received", obj.callback);
-	// 		}
-	// 	}
-	// }
-
 }
 
 if (require.main !== module) {
