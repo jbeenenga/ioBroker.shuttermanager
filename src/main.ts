@@ -5,7 +5,6 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from "@iobroker/adapter-core";
-import "rxjs/util/isNumeric";
 import { getPosition } from "suncalc";
 
 // Load your modules here, e.g.:
@@ -120,7 +119,7 @@ class Shuttermanager extends utils.Adapter {
 			return;
 		}
 		const tempSensor = await this.getForeignStateAsync(this.config.tempSensorId);
-		if (tempSensor == undefined || tempSensor.val == undefined || !isNumeric(tempSensor.val)) {
+		if (tempSensor == undefined || tempSensor.val == undefined) {
 			this.log.warn("Can't read current temperature from sensor with id " + this.config.tempSensorId);
 			return;
 		}
