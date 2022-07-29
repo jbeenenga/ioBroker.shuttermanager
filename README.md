@@ -20,7 +20,7 @@ Manage your shutters depending on time settings ans sun position.
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.2 (2022-07-29)
 * (jbeenenga) little fix
 
 ### 0.0.2 (2022-07-29)
